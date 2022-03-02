@@ -1,9 +1,7 @@
 ---
 title: "EDA of a Synthetic Financial Dataset"
 author: "Anshul Rao"
-output: 
-  pdf_document:
-    toc: yes
+output: rmarkdown::github_document
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -119,10 +117,10 @@ countNA <- function(data, byrow = FALSE) {
 countNA(data)
 ```
 
-* \textcolor{blue}{The dataset was already structured and no tidying as such was needed.}
-* \textcolor{blue}{Each transaction makes one observation and each variable has its own column.}
-* \textcolor{blue}{There was no need to handle missing values either because there are no nulls.}
-* \textcolor{blue}{Only minor cleaning was done as can be seen in the steps above.}
+* The dataset was already structured and no tidying as such was needed.
+* Each transaction makes one observation and each variable has its own column.
+* There was no need to handle missing values either because there are no nulls.
+* Only minor cleaning was done as can be seen in the steps above.
 
 ```{r}
 # Checking how many fraudulent observations are present in the dataset.
@@ -145,9 +143,9 @@ plot <- ggplot(data, aes(x = type, fill = type)) +
 plot
 ```
 
-* \textcolor{blue}{If we look at the plot above then we can see that the type of fraudulent transactions belong to only two categories: Transfer and Cash-Out.}
-* \textcolor{blue}{In fact, a close look at the scale in both fraudulent and non-fraudulent transactions tells use that the amount of fraudulent transactions are very less compared to the non-fraudulent.} 
-* \textcolor{blue}{In fact, only 8213 observations out of 6362620 are fraudulent.}
+* If we look at the plot above then we can see that the type of fraudulent transactions belong to only two categories: Transfer and Cash-Out.
+* In fact, a close look at the scale in both fraudulent and non-fraudulent transactions tells use that the amount of fraudulent transactions are very less compared to the non-fraudulent.
+* In fact, only 8213 observations out of 6362620 are fraudulent.
 
 ### Is there some visible difference between the opening balance of fraudulent and non-fraudulent transactions? 
 ```{r}
@@ -169,8 +167,8 @@ plot <- data %>%
 plot
 ```
 
-* \textcolor{blue}{If we look at the plot below then we can see that the median of opening balance is much higher in fraudulent transactions as compared to non-fraudulent ones.}
-* \textcolor{blue}{This makes sense since the fraudsters will not transfer small amounts but will do bigger transactions only.}
+* If we look at the plot below then we can see that the median of opening balance is much higher in fraudulent transactions as compared to non-fraudulent ones.
+* This makes sense since the fraudsters will not transfer small amounts but will do bigger transactions only.
 
 ### Does the fraud happen during a specific time of the day?
 ```{r}
@@ -192,8 +190,8 @@ plot <- data %>%
 plot
 ```
 
-* \textcolor{blue}{The data simulation has been done for 30 days and has 744 steps (hours).}
-* \textcolor{blue}{On checking the rate of frauds done every 24 hours a pattern was seen where most frauds occur around 5 AM, as can be seen in the plot above.}
-* \textcolor{blue}{This seems to make sense since a fraudster would pick a time when most people are offline.}
+* The data simulation has been done for 30 days and has 744 steps (hours).
+* On checking the rate of frauds done every 24 hours a pattern was seen where most frauds occur around 5 AM, as can be seen in the plot above.
+* This seems to make sense since a fraudster would pick a time when most people are offline.
 
 ---
