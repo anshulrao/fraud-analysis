@@ -1,0 +1,199 @@
+---
+title: "EDA of a Synthetic Financial Dataset"
+author: "Anshul Rao"
+output: 
+  pdf_document:
+    toc: yes
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE}
+library(readr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+### About the dataset.
+It has simulated mobile money transactions based on a sample of real transactions extracted from one month of financial logs from a mobile money service implemented in an African country. The original logs were provided by a multinational company, who is the provider of the mobile financial service which is currently running in more than 14 countries all around the world.
+
+The different variables/columns in the dataset are as follows:-
+
+* **step** - Maps a unit of time in the real world. In this case 1 step is 1 hour of time. Total steps 744 (30 days simulation).
+* **type** - CASH-IN, CASH-OUT, DEBIT, PAYMENT and TRANSFER.
+* **amount** - Amount of the transaction in local currency.
+* **nameOrig** - Customer who intiated the transaction.
+* **oldbalanceOrg** - Initial balance before the transaction.
+* **newbalanceOrig** - New balance after the transaction.
+* **nameDest** - Customer who is the recipient of the transaction.
+* **oldbalanceDest** - Initial balance of recipient before the transaction.
+* **newbalanceDest** - New balance recipient after the transaction.
+* **isFraud** - This are the transactions made by the fraudulent agents inside the simulation. In this specific dataset the fraudulent behavior of the agents aims to profit by taking control or customers accounts and try to empty the funds by transferring to another account and then cashing out of the system.
+* **isFlaggedFraud** - The business model aims to control massive transfers from one account to another and flags illegal attempts. An illegal attempt in this dataset is an attempt to transfer more than 200,000 in a single transaction.
+
+### Importing the dataset.
+```{r}
+# Dataset: https://www.kaggle.com/ealaxi/paysim1
+raw_data <- read_csv('data.csv')
+```
+
+### Checking various attributes of the dataset.
+
+#### 1. Dimensions
+```{r}
+dim(raw_data)
+```
+
+#### 2. Glimpse
+```{r}
+glimpse(raw_data)
+```
+
+#### 3. Structure
+```{r}
+str(raw_data)
+```
+
+#### 4. Summary
+```{r}
+summary(raw_data)
+```
+
+```{r}
+# Fixing a small typo in a column name.
+names(raw_data)[names(raw_data)=="oldbalanceOrg"] <- c("oldbalanceOrig")
+```
+
+```{r}
+# Rename columns to lowercase.
+data  <- rename_all(raw_data, tolower)
+```
+
+```{r}
+# Changing character columns to factor since they are categorical.
+data$type <- as.factor(data$type)
+data$nameorig <- as.factor(data$nameorig)
+data$namedest <- as.factor(data$namedest)
+```
+
+```{r}
+# Printing the first few lines of the dataset.
+head(data)
+```
+
+```{r}
+# Removing "isflaggedfraud" column.
+data <- subset(data, select = -c(isflaggedfraud))
+```
+
+```{r}
+# Creating a new column fraud_label that has 'Fraud' for 1 value in isfraud and
+# 'Non-Fraud' for 0 value in isfraud variable.
+data$fraud_label <- factor(data$isfraud, labels = c("Non-Fraud", "Fraud"))
+```
+
+```{r}
+# Helper function to check if NA values are present in the data frame.
+countNA <- function(data, byrow = FALSE) {
+  if(byrow) {
+    # MARGIN = 1 in apply indicates rows.
+    answer <- apply(data, 
+                    MARGIN = 1, 
+                    FUN = function(x) {sum(is.na(x))})
+  }
+  else {
+    # MARGIN = 2 in apply indicates columns.
+    answer <- apply(data, 
+                    MARGIN = 2, 
+                    FUN = function(x) {sum(is.na(x))})
+  }
+  return(answer)
+}
+```
+
+```{r}
+# Check if any of the columns has NA values.
+countNA(data)
+```
+
+* \textcolor{blue}{The dataset was already structured and no tidying as such was needed.}
+* \textcolor{blue}{Each transaction makes one observation and each variable has its own column.}
+* \textcolor{blue}{There was no need to handle missing values either because there are no nulls.}
+* \textcolor{blue}{Only minor cleaning was done as can be seen in the steps above.}
+
+```{r}
+# Checking how many fraudulent observations are present in the dataset.
+data %>%
+  group_by(isfraud) %>%
+  summarise(n())
+```
+
+### What kind of transactions are fraudulent?
+```{r}
+plot <- ggplot(data, aes(x = type, fill = type)) + 
+  geom_bar(position = "dodge") +
+  facet_wrap(~fraud_label, scales = "free") +
+  labs(x = "Transaction Type") +
+  coord_flip() +
+  theme(axis.text.x = element_text(angle = 90)) 
+```
+
+```{r fit.width=11}
+plot
+```
+
+* \textcolor{blue}{If we look at the plot above then we can see that the type of fraudulent transactions belong to only two categories: Transfer and Cash-Out.}
+* \textcolor{blue}{In fact, a close look at the scale in both fraudulent and non-fraudulent transactions tells use that the amount of fraudulent transactions are very less compared to the non-fraudulent.} 
+* \textcolor{blue}{In fact, only 8213 observations out of 6362620 are fraudulent.}
+
+### Is there some visible difference between the opening balance of fraudulent and non-fraudulent transactions? 
+```{r}
+# Considering only transaction types in which fraud have occurred in
+# the dataset.
+# Also, chopping off the tail for better visualization closer to the IQR.
+plot <- data %>%
+  filter(type %in% c("TRANSFER", "CASH_OUT"), 
+         oldbalanceorig < 150000) %>%
+  ggplot(aes(y = oldbalanceorig, 
+             x = type,
+             fill = type)) + 
+  geom_boxplot() + 
+  facet_wrap(~fraud_label) +
+  labs(x = "Transaction Type", y = "Opening Balance")
+```
+
+```{r fit.width=11}
+plot
+```
+
+* \textcolor{blue}{If we look at the plot below then we can see that the median of opening balance is much higher in fraudulent transactions as compared to non-fraudulent ones.}
+* \textcolor{blue}{This makes sense since the fraudsters will not transfer small amounts but will do bigger transactions only.}
+
+### Does the fraud happen during a specific time of the day?
+```{r}
+plot <- data %>%
+  mutate(step = step %% 24) %>%
+  group_by(step) %>%
+  summarise(fraud_txns = sum(isfraud),
+            no_of_txns = n()) %>%
+  mutate(fraud_rate = ( fraud_txns/no_of_txns ) * 100) %>%
+  ggplot(aes(x = step, y = fraud_rate)) + 
+  geom_point(size=4, color="#6495ED") +
+  geom_line(size=2, color="#6495ED") +
+  geom_smooth(method = 'loess', formula = 'y ~ x', color="#C41E3A") +
+  labs(x = "Hour",
+       y = "Fraud Rate")
+```
+
+```{r fit.width=11}
+plot
+```
+
+* \textcolor{blue}{The data simulation has been done for 30 days and has 744 steps (hours).}
+* \textcolor{blue}{On checking the rate of frauds done every 24 hours a pattern was seen where most frauds occur around 5 AM, as can be seen in the plot above.}
+* \textcolor{blue}{This seems to make sense since a fraudster would pick a time when most people are offline.}
+
+---
